@@ -411,6 +411,9 @@ impl<'prev, 'subs> ArgScope<'prev, 'subs> for Option<ArgScopeStack<'prev, 'subs>
         idx: usize,
     ) -> Result<(&'subs TemplateArg, &'subs TemplateArgs)> {
         let mut scope = self.as_ref();
+        if idx > 0 {
+            panic!("HARHAR");
+        }
         while let Some(s) = scope {
             if let Ok((arg, args)) = s.item.get_template_arg(idx) {
                 if let Some((in_idx, in_args)) = s.in_arg {
