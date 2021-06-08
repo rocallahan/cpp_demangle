@@ -5,11 +5,11 @@ use std::fs;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::process;
 
-const NUMBER_OF_LIBXUL_SYMBOLS: usize = 274346;
+const NUMBER_OF_LIBXUL_SYMBOLS: usize = 274_346;
 
 // These counts should only go up!
-const NUMBER_OF_LIBXUL_SYMBOLS_THAT_PARSE: usize = 274346;
-const NUMBER_OF_LIBXUL_SYMBOLS_THAT_DEMANGLE: usize = 274346;
+const NUMBER_OF_LIBXUL_SYMBOLS_THAT_PARSE: usize = 274_346;
+const NUMBER_OF_LIBXUL_SYMBOLS_THAT_DEMANGLE: usize = 274_346;
 
 fn get_cppfilt() -> &'static str {
     if cfg!(not(target_os = "macos")) {
@@ -87,7 +87,7 @@ fn libxul_symbols_demangle() {
 
             // Demangle the symbol.
             demangled.clear();
-            if let Ok(_) = write!(&mut demangled, "{}", sym) {
+            if write!(&mut demangled, "{}", sym).is_ok() {
                 num_demangled += 1;
 
                 // Finally, we are going to have `c++filt` demangle the
@@ -96,7 +96,7 @@ fn libxul_symbols_demangle() {
                     .write_all(&line)
                     .expect("should write line contents into c++filt");
                 cppfilt_stdin
-                    .write(b"\n")
+                    .write_all(b"\n")
                     .expect("should write newline into c++filt");
                 cppfilt_stdin.flush().expect("should flush c++filt stdin");
 
@@ -116,79 +116,86 @@ fn libxul_symbols_demangle() {
                         &mut log_file,
                         "failed to match libiberty's demangling: {}",
                         String::from_utf8_lossy(line)
-                    ).unwrap();
+                    )
+                    .unwrap();
                     writeln!(
                         &mut log_file,
                         "           ...we demangled to: {}",
                         String::from_utf8_lossy(&demangled)
-                    ).unwrap();
+                    )
+                    .unwrap();
                     writeln!(
                         &mut log_file,
                         "    ...libiberty demangled to: {}",
                         String::from_utf8_lossy(&libiberty_sym)
-                    ).unwrap();
+                    )
+                    .unwrap();
                 }
             } else {
                 writeln!(
                     &mut log_file,
                     "failed to demangle libxul symbol: {}",
                     String::from_utf8_lossy(line)
-                ).unwrap();
+                )
+                .unwrap();
             }
         } else {
             writeln!(
                 &mut log_file,
                 "failed to parse libxul symbol: {}",
                 String::from_utf8_lossy(line)
-            ).unwrap();
+            )
+            .unwrap();
         }
     }
 
     writeln!(
         &mut log_file,
         "================================================================"
-    ).unwrap();
+    )
+    .unwrap();
     writeln!(
         &mut log_file,
         "Total number of libxul symbols:                       {}",
         total
-    ).unwrap();
+    )
+    .unwrap();
     writeln!(
         &mut log_file,
         "Number of libxul symbols parsed:                      {} ({:.2}%)",
         num_parsed,
         num_parsed as f64 / total as f64 * 100.0
-    ).unwrap();
+    )
+    .unwrap();
     writeln!(
         &mut log_file,
         "Number of libxul symbols demangled:                   {} ({:.2}%)",
         num_demangled,
         num_demangled as f64 / total as f64 * 100.0
-    ).unwrap();
+    )
+    .unwrap();
     writeln!(
         &mut log_file,
         "Number of libxul symbols demangled same as libiberty: {} ({:.2}%)",
         num_match_libiberty,
         num_match_libiberty as f64 / num_demangled as f64 * 100.0
-    ).unwrap();
+    )
+    .unwrap();
 
     assert!(num_match_libiberty <= num_demangled);
     assert!(num_demangled <= num_parsed);
     assert!(num_parsed <= total);
 
     assert_eq!(
-        NUMBER_OF_LIBXUL_SYMBOLS,
-        total,
+        NUMBER_OF_LIBXUL_SYMBOLS, total,
         "should have expected number of total symbols"
     );
     assert_eq!(
-        NUMBER_OF_LIBXUL_SYMBOLS_THAT_PARSE,
-        num_parsed,
+        NUMBER_OF_LIBXUL_SYMBOLS_THAT_PARSE, num_parsed,
         "should have expected number of symbols that we can parse"
     );
     assert_eq!(
-        NUMBER_OF_LIBXUL_SYMBOLS_THAT_DEMANGLE,
-        num_demangled,
+        NUMBER_OF_LIBXUL_SYMBOLS_THAT_DEMANGLE, num_demangled,
         "should have expected number of symbols that we can demangle"
     );
 

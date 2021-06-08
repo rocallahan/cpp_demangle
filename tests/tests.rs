@@ -20,7 +20,7 @@ fn assert_demangles_as(mangled: &str, expected: &str, options: Option<DemangleOp
     };
 
     if expected != actual {
-        println!("");
+        println!();
         println!("Diff:");
         println!("--- expected");
         print!("+++ actual");
@@ -43,7 +43,7 @@ fn assert_demangles_as(mangled: &str, expected: &str, options: Option<DemangleOp
             }
             last = Some(cmp);
         }
-        println!("");
+        println!();
     }
 
     assert_eq!(expected, actual);
@@ -80,6 +80,32 @@ macro_rules! demangles {
     };
 }
 
+macro_rules! demangles_no_param_and_no_return_type {
+    ( $mangled:ident , $demangled:expr ) => {
+        demangles_no_param_and_no_return_type!($mangled, stringify!($mangled), $demangled);
+    };
+    ( $name:ident , $mangled:expr , $demangled:expr ) => {
+        #[test]
+        fn $name() {
+            let options = DemangleOptions::new().no_params().no_return_type();
+            assert_demangles_as($mangled, $demangled, Some(options));
+        }
+    };
+}
+
+macro_rules! demangles_no_return_type {
+    ( $mangled:ident , $demangled:expr ) => {
+        demangles_no_return_type!($mangled, stringify!($mangled), $demangled);
+    };
+    ( $name:ident , $mangled:expr , $demangled:expr ) => {
+        #[test]
+        fn $name() {
+            let options = DemangleOptions::new().no_return_type();
+            assert_demangles_as($mangled, $demangled, Some(options));
+        }
+    };
+}
+
 macro_rules! demangles_no_param {
     ( $mangled:ident , $demangled:expr ) => {
         demangles_no_param!($mangled, stringify!($mangled), $demangled);
@@ -87,7 +113,7 @@ macro_rules! demangles_no_param {
     ( $name:ident , $mangled:expr , $demangled:expr ) => {
         #[test]
         fn $name() {
-            let options = DemangleOptions { no_params: true };
+            let options = DemangleOptions::new().no_params();
             assert_demangles_as($mangled, $demangled, Some(options));
         }
     };
@@ -99,7 +125,7 @@ macro_rules! does_not_parse {
         fn $name() {
             assert_does_not_parse(stringify!($name));
         }
-    }
+    };
 }
 
 macro_rules! does_not_demangle {
@@ -108,7 +134,7 @@ macro_rules! does_not_demangle {
         fn $name() {
             assert_does_not_demangle(stringify!($name));
         }
-    }
+    };
 }
 
 // This should definitely not parse and demangle as
@@ -117,7 +143,18 @@ does_not_parse!(close);
 
 // Test some potential stack-overflows due to cyclic template parameter references
 does_not_demangle!(_Z1fIT_EvT_);
-does_not_demangle!(_ZN7mozilla6detail12ListenerImplINS_14AbstractThreadEZNS_20MediaEventSourceImplILNS_14ListenerPolicyE0EJNS_13TimedMetadataEEE15ConnectInternalIS2_NS_12MediaDecoderEMS8_FvOS5_EEENS_8EnableIfIXsr8TakeArgsIT1_EE5valueENS_18MediaEventListenerEE4TypeEPT_PT0_SD_EUlS9_E_JS5_EE17ApplyWithArgsImplISL_EENSC_IXsr8TakeArgsISH_EE5valueEvE4TypeERKSH_S9_);
+
+// A stack overflow (https://github.com/gimli-rs/cpp_demangle/pull/186)
+#[test]
+fn test_stackoverflow_does_not_occur_issue_186() {
+    assert_does_not_demangle("__ZNSt3__18__bind_rINS_4pairINS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEE8cc_errorEEZN5stlab2v15asyncIZNSB_14serial_queue_tclIZN12_GLOBAL__N_114future_adaptorIN10redacteLib12ValueOrErrorIS7_EEZNK10cc_element17rendition_requestEmbE4$_14EEDaNS_6futureIT_EEOT0_EUlSO_E_JNSN_ISJ_EEEEESM_OSO_DpOT0_EUlSU_E_SS_JST_EEENSB_6futureINS_9result_ofIFNS_5decayISQ_E4typeEDpNS11_IT1_E4typeEEE4typeEvEESO_SR_DpOS14_EUlRST_E_JST_EEC1IS1F_JST_EvEESU_SX_");
+}
+
+demangles!(
+    _ZN7mozilla6detail12ListenerImplINS_14AbstractThreadEZNS_20MediaEventSourceImplILNS_14ListenerPolicyE0EJNS_13TimedMetadataEEE15ConnectInternalIS2_NS_12MediaDecoderEMS8_FvOS5_EEENS_8EnableIfIXsr8TakeArgsIT1_EE5valueENS_18MediaEventListenerEE4TypeEPT_PT0_SD_EUlS9_E_JS5_EE17ApplyWithArgsImplISL_EENSC_IXsr8TakeArgsISH_EE5valueEvE4TypeERKSH_S9_,
+    // This does not match llvm-cxxfilt
+    "mozilla::EnableIf<TakeArgs<mozilla::EnableIf<TakeArgs<void (mozilla::MediaDecoder::*)(mozilla::TimedMetadata&&)>::value, mozilla::MediaEventListener>::Type mozilla::MediaEventSourceImpl<(mozilla::ListenerPolicy)0, mozilla::TimedMetadata>::ConnectInternal<mozilla::AbstractThread, mozilla::MediaDecoder, void (mozilla::MediaDecoder::*)(mozilla::TimedMetadata&&)>(mozilla::AbstractThread*, mozilla::MediaDecoder*, void (mozilla::MediaDecoder::*)(mozilla::TimedMetadata&&))::{lambda(mozilla::TimedMetadata&&)#1}>::value, void>::Type mozilla::detail::ListenerImpl<mozilla::AbstractThread, mozilla::EnableIf<TakeArgs<void (mozilla::MediaDecoder::*)(mozilla::TimedMetadata&&)>::value, mozilla::MediaEventListener>::Type mozilla::MediaEventSourceImpl<(mozilla::ListenerPolicy)0, mozilla::TimedMetadata>::ConnectInternal<mozilla::AbstractThread, mozilla::MediaDecoder, void (mozilla::MediaDecoder::*)(mozilla::TimedMetadata&&)>(mozilla::AbstractThread*, mozilla::MediaDecoder*, void (mozilla::MediaDecoder::*)(mozilla::TimedMetadata&&))::{lambda(mozilla::TimedMetadata&&)#1}, mozilla::TimedMetadata>::ApplyWithArgsImpl<mozilla::EnableIf<TakeArgs<void (mozilla::MediaDecoder::*)(mozilla::TimedMetadata&&)>::value, mozilla::MediaEventListener>::Type mozilla::MediaEventSourceImpl<(mozilla::ListenerPolicy)0, mozilla::TimedMetadata>::ConnectInternal<mozilla::AbstractThread, mozilla::MediaDecoder, void (mozilla::MediaDecoder::*)(mozilla::TimedMetadata&&)>(mozilla::AbstractThread*, mozilla::MediaDecoder*, void (mozilla::MediaDecoder::*)(mozilla::TimedMetadata&&))::{lambda(mozilla::TimedMetadata&&)#1}>(mozilla::EnableIf<TakeArgs<void (mozilla::MediaDecoder::*)(mozilla::TimedMetadata&&)>::value, mozilla::MediaEventListener>::Type mozilla::MediaEventSourceImpl<(mozilla::ListenerPolicy)0, mozilla::TimedMetadata>::ConnectInternal<mozilla::AbstractThread, mozilla::MediaDecoder, void (mozilla::MediaDecoder::*)(mozilla::TimedMetadata&&)>(mozilla::AbstractThread*, mozilla::MediaDecoder*, void (mozilla::MediaDecoder::*)(mozilla::TimedMetadata&&))::{lambda(mozilla::TimedMetadata&&)#1} const&, mozilla::TimedMetadata&&)"
+);
 
 demangles!(
     _Z20instantiate_with_intI3FooET_IiEv,
@@ -171,7 +208,7 @@ demangles!(
 demangles!(_ZNK1fB5cxx11Ev, "f[abi:cxx11]() const");
 
 demangles!(
-    _ZN4base8internal14CheckedSubImplIlEENSt9enable_ifIXsrSt14numeric_limitsIT_E10is_integerEbE4typeES4_S4_PS4_,
+    _ZN4base8internal14CheckedSubImplIlEENSt9enable_ifIXsr3std14numeric_limitsIT_EE10is_integerEbE4typeES3_S3_PS3_,
     "std::enable_if<std::numeric_limits<long>::is_integer, bool>::type base::internal::CheckedSubImpl<long>(long, long, long*)"
 );
 
@@ -378,7 +415,7 @@ demangles!(
 
 demangles!(
     _ZNSt3__116forward_as_tupleIJRKZN11tconcurrent6detail6sharedIFvvEEC1IZNS1_7yielder13await_suspendINS1_12task_promiseIvEEEEvNSt12experimental13coroutines_v116coroutine_handleIT_EEEUlvE_EEbNS_10shared_ptrINS1_17cancelation_tokenEEEOSE_PvEUlRSI_DpOT_E_EEENS_5tupleIJSP_EEESP_,
-    "std::__1::tuple<tconcurrent::detail::shared<void ()>::shared<void tconcurrent::yielder::await_suspend<tconcurrent::task_promise<void> >(std::experimental::coroutines_v1::coroutine_handle<tconcurrent::task_promise<void> >)::{lambda()#1}>(std::__1::shared_ptr<tconcurrent::cancelation_token>, void tconcurrent::yielder::await_suspend<tconcurrent::task_promise<void> >(std::experimental::coroutines_v1::coroutine_handle<tconcurrent::task_promise<void> >)::{lambda()#1}&&, void*)::{lambda(tconcurrent::cancelation_token&, auto:1&&...)#1} const&&&...> std::__1::forward_as_tuple<tconcurrent::detail::shared<void ()>::shared<void tconcurrent::yielder::await_suspend<tconcurrent::task_promise<void> >(std::experimental::coroutines_v1::coroutine_handle<tconcurrent::task_promise<void> >)::{lambda()#1}>(std::__1::shared_ptr<tconcurrent::cancelation_token>, void tconcurrent::yielder::await_suspend<tconcurrent::task_promise<void> >(std::experimental::coroutines_v1::coroutine_handle<tconcurrent::task_promise<void> >)::{lambda()#1}&&, void*)::{lambda(tconcurrent::cancelation_token&, auto:1&&...)#1} const&>(tconcurrent::detail::shared<void ()>::shared<void tconcurrent::yielder::await_suspend<tconcurrent::task_promise<void> >(std::experimental::coroutines_v1::coroutine_handle<tconcurrent::task_promise<void> >)::{lambda()#1}>(std::__1::shared_ptr<tconcurrent::cancelation_token>, void tconcurrent::yielder::await_suspend<tconcurrent::task_promise<void> >(std::experimental::coroutines_v1::coroutine_handle<tconcurrent::task_promise<void> >)::{lambda()#1}&&, void*)::{lambda(tconcurrent::cancelation_token&, auto:1&&...)#1} const&&&...)"
+    "std::__1::tuple<tconcurrent::detail::shared<void ()>::shared<void tconcurrent::yielder::await_suspend<tconcurrent::task_promise<void> >(std::experimental::coroutines_v1::coroutine_handle<tconcurrent::task_promise<void> >)::{lambda()#1}>(std::__1::shared_ptr<tconcurrent::cancelation_token>, void tconcurrent::yielder::await_suspend<tconcurrent::task_promise<void> >(std::experimental::coroutines_v1::coroutine_handle<tconcurrent::task_promise<void> >)::{lambda()#1}&&, void*)::{lambda(tconcurrent::cancelation_token&, auto:1&&)#1} const&> std::__1::forward_as_tuple<tconcurrent::detail::shared<void ()>::shared<void tconcurrent::yielder::await_suspend<tconcurrent::task_promise<void> >(std::experimental::coroutines_v1::coroutine_handle<tconcurrent::task_promise<void> >)::{lambda()#1}>(std::__1::shared_ptr<tconcurrent::cancelation_token>, void tconcurrent::yielder::await_suspend<tconcurrent::task_promise<void> >(std::experimental::coroutines_v1::coroutine_handle<tconcurrent::task_promise<void> >)::{lambda()#1}&&, void*)::{lambda(tconcurrent::cancelation_token&, auto:1&&)#1} const&>(tconcurrent::detail::shared<void ()>::shared<void tconcurrent::yielder::await_suspend<tconcurrent::task_promise<void> >(std::experimental::coroutines_v1::coroutine_handle<tconcurrent::task_promise<void> >)::{lambda()#1}>(std::__1::shared_ptr<tconcurrent::cancelation_token>, void tconcurrent::yielder::await_suspend<tconcurrent::task_promise<void> >(std::experimental::coroutines_v1::coroutine_handle<tconcurrent::task_promise<void> >)::{lambda()#1}&&, void*)::{lambda(tconcurrent::cancelation_token&, auto:1&&)#1} const&)"
 );
 
 demangles!(
@@ -401,7 +438,7 @@ demangles!(
 
 demangles!(
     _Z6IsNullIiEN1EIXsr1FIT_EE1nEE4typeES1_,
-    "E<F<int>::n>::type IsNull<int>(F)"
+    "E<F<int>::n>::type IsNull<int>(int)"
 );
 demangles!(
     _Z6IsNullIiEN1EIXgssr1FIT_EE1nEE4typeEv,
@@ -441,21 +478,98 @@ demangles!(
 );
 demangles!(
     _ZN5boost9unordered18unordered_multimapItN3xxx6xxxxxx6xxxxxx14xxxxxxxxxxxxxxENS_4hashItEESt8equal_toItESaISt4pairIKtS5_EEE7emplaceIISC_EEENS0_15iterator_detail8iteratorINS0_6detail16grouped_ptr_nodeISC_EEEEDpOT_,
-    "boost::unordered::iterator_detail::iterator<boost::unordered::detail::grouped_ptr_node<std::pair<unsigned short const, xxx::xxxxxx::xxxxxx::xxxxxxxxxxxxxx> > > boost::unordered::unordered_multimap<unsigned short, xxx::xxxxxx::xxxxxx::xxxxxxxxxxxxxx, boost::hash<unsigned short>, std::equal_to<unsigned short>, std::allocator<std::pair<unsigned short const, xxx::xxxxxx::xxxxxx::xxxxxxxxxxxxxx> > >::emplace<std::pair<unsigned short const, xxx::xxxxxx::xxxxxx::xxxxxxxxxxxxxx> >(std::pair<unsigned short const, xxx::xxxxxx::xxxxxx::xxxxxxxxxxxxxx>&&...)"
+    "boost::unordered::iterator_detail::iterator<boost::unordered::detail::grouped_ptr_node<std::pair<unsigned short const, xxx::xxxxxx::xxxxxx::xxxxxxxxxxxxxx> > > boost::unordered::unordered_multimap<unsigned short, xxx::xxxxxx::xxxxxx::xxxxxxxxxxxxxx, boost::hash<unsigned short>, std::equal_to<unsigned short>, std::allocator<std::pair<unsigned short const, xxx::xxxxxx::xxxxxx::xxxxxxxxxxxxxx> > >::emplace<std::pair<unsigned short const, xxx::xxxxxx::xxxxxx::xxxxxxxxxxxxxx> >(std::pair<unsigned short const, xxx::xxxxxx::xxxxxx::xxxxxxxxxxxxxx>&&)"
 );
 demangles!(
     _ZNSt6vectorIN3xxx6xxxxxx15xxxxxxxxxxxxxxxESaIS2_EE12emplace_backIIS2_EEEvDpOT_,
-    "void std::vector<xxx::xxxxxx::xxxxxxxxxxxxxxx, std::allocator<xxx::xxxxxx::xxxxxxxxxxxxxxx> >::emplace_back<xxx::xxxxxx::xxxxxxxxxxxxxxx>(xxx::xxxxxx::xxxxxxxxxxxxxxx&&...)"
+    "void std::vector<xxx::xxxxxx::xxxxxxxxxxxxxxx, std::allocator<xxx::xxxxxx::xxxxxxxxxxxxxxx> >::emplace_back<xxx::xxxxxx::xxxxxxxxxxxxxxx>(xxx::xxxxxx::xxxxxxxxxxxxxxx&&)"
 );
-demangles_no_param!(
+demangles_no_param_and_no_return_type!(
     _ZN2js9LifoAlloc21newArrayUninitializedI17OffsetAndDefIndexEEPT_m,
     "js::LifoAlloc::newArrayUninitialized<OffsetAndDefIndex>"
 );
-demangles_no_param!(
-    _Z4callIXadL_Z5helloiEEEvi,
-    "call<&hello(int)>"
+demangles_no_param_and_no_return_type!(_Z4callIXadL_Z5helloiEEEvi, "call<&hello(int)>");
+demangles_no_param_and_no_return_type!(_ZNK5Hello6methodEv, "Hello::method");
+
+demangles_no_return_type!(
+    _ZL15draw_quad_spansIjEviPN4glsl11vec2_scalarEtPDv16_fR7TextureiS6_RK8ClipRect,
+    "draw_quad_spans<unsigned int>(int, glsl::vec2_scalar*, unsigned short, float __vector(16)*, Texture&, int, Texture&, ClipRect const&)"
 );
+
+demangles_no_return_type!(
+    _ZL13draw_elementsItEviiR6BuffermR11VertexArrayR7TextureiS5_,
+    "draw_elements<unsigned short>(int, int, Buffer&, unsigned long, VertexArray&, Texture&, int, Texture&)"
+);
+
+demangles_no_return_type!(
+    _ZL12check_depth8ILi515ELb0EEitPtRDv8_s,
+    "check_depth8<515, false>(unsigned short, unsigned short*, short __vector(8)&)"
+);
+
+demangles_no_return_type!(
+    _ZN7mozilla6detail23RunnableMethodArgumentsIJNS_2wr10WrWindowIdEbEE5applyINS2_12RenderThreadEMS6_FvS3_bEEEDTcl9applyImplfp_fp0_dtdefpT10mArgumentstlNSt3__116integer_sequenceImJLm0ELm1EEEEEEEPT_T0_,
+    "mozilla::detail::RunnableMethodArguments<mozilla::wr::WrWindowId, bool>::apply<mozilla::wr::RenderThread, void (mozilla::wr::RenderThread::*)(mozilla::wr::WrWindowId, bool)>(mozilla::wr::RenderThread*, void (mozilla::wr::RenderThread::*)(mozilla::wr::WrWindowId, bool))"
+);
+
 demangles_no_param!(
-    _ZNK5Hello6methodEv,
-    "Hello::method"
+    _ZN7mozilla6detail23RunnableMethodArgumentsIJNS_2wr10WrWindowIdEbEE5applyINS2_12RonderThroudEMS6_FvS3_bEEEDTcl9applyImplfp_fp0_dtdefpT10mArgumentstlNSt3__116integer_sequenceImJLm0ELm1EEEEEEEPT_T0_,
+    "decltype ((applyImpl)({parm#1}, {parm#2}, (*this).mArguments, std::__1::integer_sequence<unsigned long, (unsigned long)0, (unsigned long)1>{})) mozilla::detail::RunnableMethodArguments<mozilla::wr::WrWindowId, bool>::apply<mozilla::wr::RonderThroud, void (mozilla::wr::RonderThroud::*)(mozilla::wr::WrWindowId, bool)>"
+);
+
+demangles!(
+    _ZZN17TestLargestRegion18TestNonRectangularEvENUt_D2Ev,
+    "TestLargestRegion::TestNonRectangular()::{unnamed type#1}::~TestNonRectangular()"
+);
+demangles!(
+    clone_suffix,
+    "_ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_M_constructIPcEEvT_S7_St20forward_iterator_tag.isra.90",
+    "void std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_construct<char*>(char*, char*, std::forward_iterator_tag) [clone .isra.90]"
+);
+demangles!(
+    multiple_clone_suffixes,
+    "_ZN15google_breakpad17ProcCpuInfoReader14GetValueAndLenEPm.isra.20.part.21",
+    "google_breakpad::ProcCpuInfoReader::GetValueAndLen(unsigned long*) [clone .isra.20] [clone .part.21]"
+);
+// Taken from https://gcc.gnu.org/bugzilla/show_bug.cgi?id=40831
+demangles!(
+    multiple_clone_numbers,
+    "_Z3fooi.part.9.165493.constprop.775.31805",
+    "foo(int) [clone .part.9.165493] [clone .constprop.775.31805]"
+);
+demangles!(_Z1fDpDv1_c, "f(char __vector(1)...)");
+demangles!(
+    _Z1gIJidEEDTclL_Z1fEspplfp_Li1EEEDpT_,
+    "decltype (f(({parm#1}+(1))...)) g<int, double>(int, double)"
+);
+demangles!(
+    _ZN7mozilla5xpcom16GetServiceHelperCI2NS0_18StaticModuleHelperEENS0_8ModuleIDEP8nsresult,
+    "mozilla::xpcom::GetServiceHelper::StaticModuleHelper(mozilla::xpcom::ModuleID, nsresult*)"
+);
+demangles!(_ZNK1QssERKS_, "Q::operator<=>(Q const&) const");
+// Taken from https://git.llvm.org/klaus/libcxxabi/commit/5dd173b3792e868a7ebfa699d156f24075eafc01.diff
+demangles!(
+    ___ZN19URLConnectionClient33_clientInterface_cancelConnectionEP16dispatch_queue_sU13block_pointerFvvE_block_invoke14,
+    "invocation function for block in URLConnectionClient::_clientInterface_cancelConnection(dispatch_queue_s*, void () block_pointer)"
+);
+demangles!(
+    _ZNK8SkRecord6Record5visitIRN9SkRecords4DrawEEEDTclfp_cvNS2_4NoOpE_EEEOT_,
+    "decltype ({parm#1}(SkRecords::NoOp())) SkRecord::Record::visit<SkRecords::Draw&>(SkRecords::Draw&) const"
+);
+demangles!(
+    _ZGTtNKSt11logic_error4whatEv,
+    "transaction clone for std::logic_error::what() const"
+);
+// Tests the case where the character after 'GT' can be any char but 'n'.
+demangles!(
+    _ZGTmNKSt11logic_error4whatEv,
+    "transaction clone for std::logic_error::what() const"
+);
+demangles!(
+    _ZGTnNKSt11logic_error4whatEv,
+    "non-transaction clone for std::logic_error::what() const"
+);
+demangles!(
+    block_invoke_dot_suffix,
+    "___ZN6WebKit23ApplicationStateTrackerC2EP6UIViewP13objc_selectorS4_S4__block_invoke.19",
+    "invocation function for block in WebKit::ApplicationStateTracker::ApplicationStateTracker(UIView*, objc_selector*, objc_selector*, objc_selector*)"
 );

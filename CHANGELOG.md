@@ -28,6 +28,130 @@ Released YYYY/MM/DD
 
 --------------------------------------------------------------------------------
 
+# 0.3.2
+
+Released 2020/11/27
+
+## Added
+
+* `ParseOptions` is introduced, with new API variants `Symbol::new_with_options`
+  and `Symbol::with_tail_and_options`. The existing APIs use the default parsing
+  options.
+* Recursion limits are now configurable via `ParseOptions` and `DemangleOptions`.
+* Transaction clone symbols are supported #217
+
+## Changed
+
+* The default parsing recursion limit is now 96 (up from 64). The value was
+  chosen to avoid pathological symbols overflowing the stack of a debug build.
+  Users may be able to safely raise the limits substantially depending on their
+  expected workload and tolerance for crashes.
+
+--------------------------------------------------------------------------------
+
+# 0.3.1
+
+Released 2020/10/09
+
+## Added
+
+* Java Resource symbols are now supported #200
+
+## Fixed
+
+* C++ reference collapsing rules are honored.
+* Misc style fixes.
+
+## Changed
+
+* DemangleOptions is now repr(C)
+
+--------------------------------------------------------------------------------
+
+# 0.3.0
+
+Released 2020/06/11
+
+## Changed
+
+* The DemangleOptions API has changed to be more future-proof and the
+  DemangleNodeType enum now has an __NonExhaustive variant to discourage
+  pattern matching without a `_ => ()` arm.
+
+--------------------------------------------------------------------------------
+
+# 0.2.17
+
+Released 2020/06/09
+
+## Added
+
+* Return types can now be elided from demangled symbols via
+  DemangleOptions::no_return_typ. #202
+
+* A vtable marker is now emitted for semantic consumers.
+
+--------------------------------------------------------------------------------
+
+# 0.2.16
+
+Released 2020/05/13
+
+## Added
+
+* Block invocation symbols. #197
+
+* The spaceship operator <=>. #198
+
+--------------------------------------------------------------------------------
+
+# 0.2.15
+
+Released 2020/04/24
+
+## Added
+
+* A C API to cpp_demangle is now available. #191
+
+* Additional AST markers are emitted for semantic consumers. #189
+
+## Fixed
+
+* Multiple clone suffixes are now supported. #194
+
+--------------------------------------------------------------------------------
+
+# 0.2.14
+
+Released 2019/11/15
+
+## Fixed
+
+* Certain symbols can have cyclic back references, or at least very deep stacks
+  of back references. Many of those symbols are valid! But as a practical
+  implementation to avoid stack overflows and infinite loops, we now place a
+  limit on the depth of back references we will follow. This is similar to the
+  parse limit that we already had, but for a different phase of the
+  demangling. [#186](https://github.com/gimli-rs/cpp_demangle/pull/186)
+
+--------------------------------------------------------------------------------
+
+# 0.2.13
+
+Released 2019/07/30
+
+## Fixed
+
+* Fix parsing of outdated `sr` forms that prevented parsing other symbols. See
+  #173 for details.
+
+* Ensures a space is printed before a `&` or `&&` reference qualifier. #176
+
+* Fixed placement of parentheses in symbols with function pointer arguments that
+  have `const` qualifiers. #175
+
+--------------------------------------------------------------------------------
+
 # 0.2.12
 
 Released 2018/08/09

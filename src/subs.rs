@@ -1,5 +1,6 @@
 //! Types dealing with the substitutions table.
 
+use super::DemangleWrite;
 use ast;
 use std::fmt;
 use std::iter::FromIterator;
@@ -10,6 +11,7 @@ use vec::Vec;
 /// table.
 #[doc(hidden)]
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[allow(clippy::large_enum_variant)]
 pub enum Substitutable {
     /// An `<unscoped-template-name>` production.
     UnscopedTemplateName(ast::UnscopedTemplateName),
@@ -29,7 +31,7 @@ pub enum Substitutable {
 
 impl<'subs, W> ast::Demangle<'subs, W> for Substitutable
 where
-    W: 'subs + fmt::Write,
+    W: 'subs + DemangleWrite,
 {
     fn demangle<'prev, 'ctx>(
         &'subs self,
@@ -51,6 +53,7 @@ impl<'a> ast::GetLeafName<'a> for Substitutable {
         match *self {
             Substitutable::UnscopedTemplateName(ref name) => name.get_leaf_name(subs),
             Substitutable::Prefix(ref prefix) => prefix.get_leaf_name(subs),
+            Substitutable::Type(ref ty) => ty.get_leaf_name(subs),
             _ => None,
         }
     }
